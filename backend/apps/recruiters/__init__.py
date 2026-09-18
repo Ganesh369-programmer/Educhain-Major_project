@@ -1,0 +1,1 @@
+"""Recruiters app package."""
