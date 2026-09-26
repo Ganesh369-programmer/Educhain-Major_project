@@ -3,7 +3,7 @@
 ## High-Level Architecture
 
 ```
-React.js (css, ethers.js)
+React.js (Tailwind, ethers.js)
         ↓  REST (JSON, JWT)
 Django REST Framework
         ↓
@@ -158,3 +158,32 @@ Recruiter can additionally view the student's public career profile, if the stud
 | Issuer approval status/history | Django DB (off-chain) + whitelist mapping (on-chain) |
 
 See `SECURITY.md` for the reasoning behind this split.
+
+## MetaMask / Wallet Integration Scope
+
+MetaMask is used only to **obtain and prove control of a wallet address on the client side** — it is never used to sign any privileged platform transaction. All privileged on-chain writes (issuer approval, credential issuance, revocation) are signed server-side by Django using `PLATFORM_ADMIN_PRIVATE_KEY` or the relevant issuer flow, per the "Django is the only component allowed to write to the blockchain" rule in `AGENTS.md` Section 7.
+
+### Where MetaMask IS used
+
+| Use case | What happens |
+|---|---|
+| Institution registration | Institution connects MetaMask on the React frontend; the connected address is submitted as `wallet_address` in the registration form |
+| Local development/testing | A Ganache test account's private key is imported into MetaMask so transactions and balances are visible during development and demos |
+| (Optional, Phase 11) Student wallet linking | A student may optionally connect a wallet to populate `StudentProfile.wallet_address` |
+
+### Where MetaMask is NOT used
+
+- **Admin approval of an institution** — signed by the backend's own `PLATFORM_ADMIN_PRIVATE_KEY`, not by an admin's MetaMask popup.
+- **Credential issuance/revocation** — signed by the backend on the issuer's behalf using platform-managed transaction submission, not a live MetaMask signature per action.
+- **Verification** — a public, unauthenticated read call; no wallet needed at all.
+
+### Known Limitation: Address Submission vs. Proven Ownership
+
+The current design (Option A below) accepts a wallet address at registration without cryptographically verifying the institution actually controls it. This is called out explicitly rather than left implicit, since it's a legitimate gap to be aware of:
+
+| Option | Description | Status |
+|---|---|---|
+| **A — Address only (current)** | Institution submits a wallet address; no proof of ownership required at registration time | Implemented |
+| **B — Signed challenge (Sign-In with Ethereum / EIP-4191)** | Backend issues a challenge message, institution signs it with MetaMask, backend verifies the signature recovers to the claimed address before accepting registration | Future scope |
+
+Option B closes the gap where someone could submit a wallet address they don't actually control. It is not required for the prototype's core demonstration (issuer whitelisting still fully prevents an *unapproved* address from issuing credentials, regardless of whether address ownership was proven at registration) but should be implemented before any real-world deployment.

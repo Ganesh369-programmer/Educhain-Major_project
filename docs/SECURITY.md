@@ -66,6 +66,7 @@ Rule of thumb used throughout the docs: **if it's needed to independently prove 
 - `PLATFORM_ADMIN_PRIVATE_KEY` (used only for admin-triggered on-chain calls like `approveIssuer`) lives in the backend environment only — never sent to the frontend, never logged, never committed.
 - Institutions/students use their own wallets (MetaMask) for any action requiring their signature — the platform never holds their private keys.
 - Consider a KMS/secrets manager for production; for the academic prototype, a properly git-ignored `.env` on a single trusted server is the accepted minimum.
+- See `ARCHITECTURE.md`'s "MetaMask / Wallet Integration Scope" section for exactly which actions MetaMask is (and is not) used for, and the known limitation around unproven wallet-address ownership at institution registration.
 
 ## Smart Contract Access Control
 

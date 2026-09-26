@@ -1,4 +1,40 @@
 {
   "_format": "hh-sol-cache-2",
-  "files": {}
+  "files": {
+    "C:\\Users\\ganes\\OneDrive\\Desktop\\Educhain\\blockchain\\contracts\\CredentialPlatform.sol": {
+      "lastModificationDate": 1790410040718,
+      "contentHash": "6d3d81d04c40cf45b3d4e29b58d88f61",
+      "sourceName": "contracts/CredentialPlatform.sol",
+      "solcConfig": {
+        "version": "0.8.19",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "^0.8.19"
+      ],
+      "artifacts": [
+        "CredentialPlatform"
+      ]
+    }
+  }
 }
