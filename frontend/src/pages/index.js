@@ -1,1 +1,3 @@
-// Pages will be added in subsequent phases per FRONTEND_GUIDELINES.md
+export { default as Login } from './Login';
+export { default as Register } from './Register';
+export { default as Dashboard } from './Dashboard';

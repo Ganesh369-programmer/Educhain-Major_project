@@ -1,1 +1,2 @@
-// Route definitions and role guards will be added in subsequent phases per FRONTEND_GUIDELINES.md
+export { default as ProtectedRoute } from './ProtectedRoute';
+export { default as AppRoutes } from './index.jsx';

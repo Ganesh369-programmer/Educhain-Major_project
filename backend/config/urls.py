@@ -28,6 +28,10 @@ urlpatterns = [
     path('api/verification/', include('apps.verification.urls')),
     path('api/v1/verification/', include('apps.verification.urls')),
 
+    # Verification endpoints per API_SPECIFICATION.md: /api/v1/verify/{credential_id}/
+    path('api/verify/', include('apps.verification.urls')),
+    path('api/v1/verify/', include('apps.verification.urls')),
+
     path('api/recruiters/', include('apps.recruiters.urls')),
     path('api/v1/recruiters/', include('apps.recruiters.urls')),
 
