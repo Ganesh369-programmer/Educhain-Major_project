@@ -63,10 +63,20 @@ Rule of thumb used throughout the docs: **if it's needed to independently prove 
 
 ## Blockchain Private Key Protection
 
-- `PLATFORM_ADMIN_PRIVATE_KEY` (used only for admin-triggered on-chain calls like `approveIssuer`) lives in the backend environment only — never sent to the frontend, never logged, never committed.
-- Institutions/students use their own wallets (MetaMask) for any action requiring their signature — the platform never holds their private keys.
+- `PLATFORM_ADMIN_PRIVATE_KEY` (used only for admin-triggered on-chain calls like `approveIssuer` and `revokeIssuer`) lives in the backend environment only — never sent to the frontend, never logged, never committed.
+- For institution credential signing, private keys are never accepted over HTTP (neither via request bodies nor headers). The platform employs Model A (custodial wallets encrypted at rest).
 - Consider a KMS/secrets manager for production; for the academic prototype, a properly git-ignored `.env` on a single trusted server is the accepted minimum.
 - See `ARCHITECTURE.md`'s "MetaMask / Wallet Integration Scope" section for exactly which actions MetaMask is (and is not) used for, and the known limitation around unproven wallet-address ownership at institution registration.
+
+## Custodial Wallet Model (Institution Signing Keys)
+
+- **Architecture (Model A):** The platform generates and custodies each institution's signing wallet upon admin approval.
+- **Encryption at Rest:** Stored in `Institution.encrypted_private_key` using Fernet symmetric encryption keyed by `WALLET_ENCRYPTION_KEY` (kept separate from `DJANGO_SECRET_KEY`). Plaintext private keys are never written to the database.
+- **In-Memory Lifetime:** Keys are decrypted strictly in-memory at the moment of building and signing on-chain transactions (`issueCredential`, `batchIssueCredentials`, `revokeCredential`). The decrypted key is never logged, never returned via API responses/serializers, and never accepted from incoming requests.
+- **Address Preservation:** The institution's originally submitted wallet address (e.g. from MetaMask at initial registration) is preserved in `Institution.registered_wallet_address` for audit and provenance records. The generated custodial wallet address is assigned to `Institution.wallet_address`, which is the address approved and whitelisted on-chain.
+- **Security Tradeoffs & Production Alternatives:**
+  - *Tradeoff:* The institution must trust the platform host not to abuse or expose the custodied private key.
+  - *Production Alternative:* Non-custodial signing via the institution's own MetaMask wallet combined with an ERC-2771 / EIP-712 meta-transaction relayer or smart contract forwarder, allowing institutions to retain sole key possession while the platform covers gas or coordinates batches.
 
 ## Smart Contract Access Control
 

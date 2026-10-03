@@ -1,1 +1,5 @@
+console.log(network.chainId)
+const network = await ethers.provider.getNetwork()
+console.log(network.chainId)
+const network = await ethers.provider.getNetwork()
 npx hardhat console --network ganache

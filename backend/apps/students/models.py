@@ -5,8 +5,8 @@ from apps.accounts.models import User, UserRole
 
 class StudentProfile(models.Model):
     """
-    Student profile model linking 1-to-1 with User (role=STUDENT).
-    Matches docs/DATABASE_SCHEMA.md.
+    Student profile model — the canonical record linking 1-to-1 with a User (role=STUDENT).
+    Matches DATABASE_SCHEMA.md. Table name: student_profiles.
     """
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.OneToOneField(

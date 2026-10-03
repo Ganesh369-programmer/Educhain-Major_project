@@ -40,11 +40,6 @@ class CredentialCreateSerializer(serializers.ModelSerializer):
         return value
 
     def validate(self, attrs):
-        # TODO: Phase 8 — at this point in the flow, hash the uploaded document
-        # to produce document_hash, upload the document to IPFS to get ipfs_cid,
-        # and submit the on-chain issueCredential() call via blockchain.services.
-        # Right now (Phase 6) we simply store whatever the caller provided so
-        # the DB layer can be exercised by tests.
         document_hash = attrs.get('document_hash')
         if document_hash and Credential.objects.filter(
             document_hash__iexact=document_hash
@@ -59,6 +54,35 @@ class CredentialCreateSerializer(serializers.ModelSerializer):
             'id': str(instance.id),
             'status': instance.status,
         }
+
+
+class CredentialIssueRequestSerializer(serializers.Serializer):
+    """
+    Validates payload for POST /credentials/issue/.
+    Accepts student_email or student_id/student, and credential metadata.
+    Signing key is retrieved securely and decrypted in-memory from the institution profile.
+    """
+    student_email = serializers.EmailField(required=False, allow_blank=True)
+    student_id = serializers.UUIDField(required=False)
+    student = serializers.UUIDField(required=False)
+    credential_type = serializers.CharField(max_length=100)
+    title = serializers.CharField(max_length=255)
+    issue_date = serializers.DateField()
+
+    def validate(self, attrs):
+        if not attrs.get('student_email') and not attrs.get('student_id') and not attrs.get('student'):
+            raise serializers.ValidationError(
+                "Either 'student_email' or 'student_id' must be provided."
+            )
+        return attrs
+
+
+class BatchIssueRequestSerializer(serializers.Serializer):
+    """
+    Validates payload for POST /credentials/issue-batch/.
+    Accepts CSV file containing batch metadata.
+    """
+    csv_file = serializers.FileField(required=True)
 
 
 class CredentialSerializer(serializers.ModelSerializer):

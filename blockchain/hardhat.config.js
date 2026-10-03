@@ -21,7 +21,7 @@ if (fs.existsSync(envPath)) {
 
 const adminPrivateKey = process.env.PLATFORM_ADMIN_PRIVATE_KEY;
 const accounts = adminPrivateKey && adminPrivateKey.startsWith("0x") ? [adminPrivateKey] : undefined;
-const chainId = parseInt(process.env.BLOCKCHAIN_CHAIN_ID || "5777", 10);
+const chainId = parseInt(process.env.BLOCKCHAIN_CHAIN_ID || "1337", 10);
 
 /** @type import('hardhat/config').HardhatUserConfig */
 module.exports = {

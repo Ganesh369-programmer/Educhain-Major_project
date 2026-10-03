@@ -139,5 +139,13 @@ class IssuerAuthorizationIntegrationTests(APITestCase):
         self.assertGreater(tx_log.gas_used, 0)
 
         # Verify on-chain whitelist status via isAuthorizedIssuer
-        is_authorized = BlockchainService.is_authorized_issuer(self.inst_wallet)
-        self.assertTrue(is_authorized)
+        # Explicit consistency check: after approval, institution.wallet_address (refreshed from DB)
+        # is the SAME address that BlockchainService.is_authorized_issuer() confirms as True.
+        self.institution.refresh_from_db()
+        is_authorized = BlockchainService.is_authorized_issuer(self.institution.wallet_address)
+        self.assertTrue(
+            is_authorized,
+            f"Expected refreshed institution.wallet_address ({self.institution.wallet_address}) to be authorized on-chain"
+        )
+        self.assertEqual(self.institution.registered_wallet_address, self.inst_wallet)
+        self.assertFalse(BlockchainService.is_authorized_issuer(self.institution.registered_wallet_address))

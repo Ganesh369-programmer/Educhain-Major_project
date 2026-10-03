@@ -187,3 +187,21 @@ The current design (Option A below) accepts a wallet address at registration wit
 | **B — Signed challenge (Sign-In with Ethereum / EIP-4191)** | Backend issues a challenge message, institution signs it with MetaMask, backend verifies the signature recovers to the claimed address before accepting registration | Future scope |
 
 Option B closes the gap where someone could submit a wallet address they don't actually control. It is not required for the prototype's core demonstration (issuer whitelisting still fully prevents an *unapproved* address from issuing credentials, regardless of whether address ownership was proven at registration) but should be implemented before any real-world deployment.
+
+## Custodial Wallet Model (Institution Signing Keys)
+
+To ensure secure automated credential issuance and prevent raw private key exposure over HTTP (such as via request bodies or custom headers), the platform implements **Model A: Custodial Wallets Encrypted at Rest**.
+
+### Architecture & Key Lifecycle
+1. **Wallet Generation:** When an Admin approves a pending institution (`POST /institutions/{id}/approve/`), the backend generates a dedicated Ethereum keypair (`w3.eth.account.create()`) if one does not already exist.
+2. **Encryption at Rest:** The raw private key is encrypted immediately using Fernet symmetric encryption (`cryptography.fernet.Fernet`), keyed by `WALLET_ENCRYPTION_KEY` from environment variables (completely separate from `DJANGO_SECRET_KEY`). The ciphertext is stored in `Institution.encrypted_private_key`. The raw private key is never written to disk or database.
+3. **Address Roles:**
+   - `Institution.registered_wallet_address`: Preserves the self-reported MetaMask address submitted during initial institution registration for provenance, audit, and contact records.
+   - `Institution.wallet_address`: Replaced with the newly generated custodial wallet address. This is the exact address passed to the smart contract's `approveIssuer()` function and recorded in the on-chain authorized issuer whitelist.
+4. **In-Memory Decryption & Signing:** During credential issuance (`issueCredential`, `batchIssueCredentials`) or revocation (`revokeCredential`), the backend looks up the institution by `wallet_address`, decrypts the private key strictly in-memory, signs the transaction, and broadcasts the raw signed transaction. The decrypted key is never logged, never returned via API responses, and never accepted from client requests.
+
+### Tradeoffs & Production Alternatives
+- **Deliberate Tradeoff:** The custodial design requires institutions to trust the platform backend to custody and sign on their behalf without key leakage or misuse. This is an explicit, documented prototype design decision.
+- **Production Non-Custodial Alternative:** In a production release, the platform can migrate to non-custodial signing:
+  - The institution signs issuance payloads or EIP-712 typed data directly within their browser via MetaMask.
+  - The platform backend serves purely as a gasless relayer or forwarder (ERC-2771 meta-transactions or smart contract delegated-call pattern), eliminating server-side custodial key storage entirely.

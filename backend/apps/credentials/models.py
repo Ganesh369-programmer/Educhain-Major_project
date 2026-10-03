@@ -1,37 +1,7 @@
 import uuid
 from django.db import models
-from apps.accounts.models import User, UserRole
 from apps.institutions.models import Institution
-
-
-class StudentProfile(models.Model):
-    # TODO: Move this model to apps/accounts/models.py in a later phase.
-    # It belongs there per DATABASE_SCHEMA.md (one-to-one with User role=STUDENT).
-    # Placed here temporarily because Phase 6 scope forbids touching apps/accounts
-    # and the Credential model requires a working StudentProfile FK for tests.
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    user = models.OneToOneField(
-        User,
-        on_delete=models.CASCADE,
-        related_name='student_profile',
-        limit_choices_to={'role': UserRole.STUDENT},
-    )
-    full_name = models.CharField(max_length=255)
-    roll_number = models.CharField(max_length=100, blank=True, null=True)
-    date_of_birth = models.DateField(blank=True, null=True)
-    wallet_address = models.CharField(max_length=42, blank=True, null=True)
-    public_profile_enabled = models.BooleanField(default=False)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        db_table = 'student_profiles'
-        verbose_name = 'student profile'
-        verbose_name_plural = 'student profiles'
-        ordering = ['-created_at']
-
-    def __str__(self):
-        return f"{self.full_name} ({self.user.email})"
+from apps.students.models import StudentProfile  # noqa: F401 — re-exported for backward compat with existing imports
 
 
 class CredentialStatus(models.TextChoices):
@@ -48,7 +18,7 @@ class Credential(models.Model):
     # Core ownership/issuance links — every credential belongs to exactly one
     # student (recipient) and was issued by exactly one institution.
     student = models.ForeignKey(
-        StudentProfile,
+        'students.StudentProfile',
         on_delete=models.CASCADE,
         related_name='credentials',
     )

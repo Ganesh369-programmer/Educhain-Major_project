@@ -104,7 +104,18 @@ class ApproveInstitutionView(generics.GenericAPIView):
         serializer.is_valid(raise_exception=True)
         trust_tier = serializer.validated_data['trust_tier']
 
-        # Phase 5: Trigger on-chain approveIssuer() call.
+        # Model A: Custodial wallet generation
+        # If the institution does not already have a custodial key, generate an Ethereum keypair
+        # and encrypt+store the private key using Fernet.
+        # The custodial wallet is generated and saved FIRST to the database, ensuring that
+        # the freshly-updated institution.wallet_address is the single source of truth passed
+        # to approve_issuer() for on-chain whitelisting and used for all subsequent signing.
+        if not institution.encrypted_private_key:
+            institution.generate_custodial_wallet()
+            institution.save()
+            institution.refresh_from_db()
+
+        # Phase 5: Trigger on-chain approveIssuer() call with the whitelisted wallet address.
         # DB status is updated ONLY if the on-chain call succeeds.
         tx_hash = BlockchainService.approve_issuer(
             wallet_address=institution.wallet_address,
@@ -123,6 +134,8 @@ class ApproveInstitutionView(generics.GenericAPIView):
         return Response({
             "id": str(institution.id),
             "status": institution.status,
+            "wallet_address": institution.wallet_address,
+            "registered_wallet_address": institution.registered_wallet_address,
             "tx_hash": tx_hash,
         }, status=status.HTTP_200_OK)
 

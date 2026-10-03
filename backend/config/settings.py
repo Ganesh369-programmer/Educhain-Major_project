@@ -8,6 +8,7 @@ Configured per AGENTS.md and docs/BACKEND_GUIDELINES.md.
 import os
 from datetime import timedelta
 from pathlib import Path
+from django.core.exceptions import ImproperlyConfigured
 from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -47,6 +48,7 @@ INSTALLED_APPS = [
     # Internal apps (feature-scoped)
     'apps.accounts',
     'apps.institutions',
+    'apps.students',
     'apps.credentials',
     'apps.verification',
     'apps.recruiters',
@@ -181,6 +183,9 @@ BLOCKCHAIN_RPC_URL = os.getenv('BLOCKCHAIN_RPC_URL', 'http://127.0.0.1:7545')
 BLOCKCHAIN_CHAIN_ID = int(os.getenv('BLOCKCHAIN_CHAIN_ID', '1337') or '1337')
 CONTRACT_ADDRESS = os.getenv('CONTRACT_ADDRESS', '')
 PLATFORM_ADMIN_PRIVATE_KEY = os.getenv('PLATFORM_ADMIN_PRIVATE_KEY', '')
+WALLET_ENCRYPTION_KEY = os.getenv('WALLET_ENCRYPTION_KEY')
+if not WALLET_ENCRYPTION_KEY:
+    raise ImproperlyConfigured("WALLET_ENCRYPTION_KEY environment variable is required.")
 
 # IPFS Configuration
 IPFS_API_URL = os.getenv('IPFS_API_URL', '')

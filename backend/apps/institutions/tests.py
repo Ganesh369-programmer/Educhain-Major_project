@@ -544,3 +544,97 @@ class InstitutionApprovalTests(APITestCase):
         response = self.client.post(url, {'trust_tier': 1}, format='json')
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
         self.assertEqual(response.data['code'], 'NOT_FOUND')
+
+
+class CustodialWalletEncryptionTests(APITestCase):
+    def setUp(self):
+        self.raw_test_pk = '0x4f3edf983ac636a65a842ce7c78d9aa706d3b113bce9c46f30d7d21715b23b1d'
+        self.institution = Institution.objects.create(
+            name='Test Tech University',
+            institution_type=InstitutionType.UNIVERSITY,
+            official_email_domain='testtech.edu',
+            registration_number='TECH-777',
+            proof_document='proofs/tech.pdf',
+            wallet_address='0x90F79bf6EB2c4f870365E785982E1f101E93b906',
+            status=InstitutionStatus.PENDING,
+        )
+
+    def test_encrypted_private_key_is_ciphertext_not_plaintext(self):
+        """
+        Confirms Institution.encrypted_private_key, when read directly via the DB/ORM,
+        is genuinely Fernet ciphertext and NOT equal to or containing the raw private key.
+        """
+        self.institution.set_private_key(self.raw_test_pk)
+        self.institution.save(update_fields=['encrypted_private_key'])
+
+        # Reload directly from database to test persistence layer
+        reloaded = Institution.objects.get(id=self.institution.id)
+
+        # 1. Stored field must not be empty
+        self.assertTrue(bool(reloaded.encrypted_private_key))
+        # 2. Must not equal the raw key
+        self.assertNotEqual(reloaded.encrypted_private_key, self.raw_test_pk)
+        # 3. Must not contain the raw key string anywhere inside ciphertext
+        self.assertNotIn(self.raw_test_pk, reloaded.encrypted_private_key)
+        self.assertNotIn(self.raw_test_pk.replace('0x', ''), reloaded.encrypted_private_key)
+        # 4. Decrypting in-memory recovers the original raw private key
+        self.assertEqual(reloaded.get_decrypted_private_key(), self.raw_test_pk)
+
+    def test_generate_custodial_wallet_roundtrip(self):
+        """
+        Confirms a generated custodial wallet creates a valid Ethereum keypair,
+        stores the private key as ciphertext, and the decrypted key round-trips
+        and matches the custodial wallet address.
+        """
+        from eth_account import Account
+
+        original_address = self.institution.wallet_address
+        new_address = self.institution.generate_custodial_wallet()
+        self.institution.save()
+
+        # Reload directly from DB
+        reloaded = Institution.objects.get(id=self.institution.id)
+
+        self.assertEqual(reloaded.registered_wallet_address, original_address)
+        self.assertEqual(reloaded.wallet_address, new_address)
+        self.assertTrue(reloaded.wallet_address.startswith('0x'))
+        self.assertEqual(len(reloaded.wallet_address), 42)
+
+        # Ciphertext check
+        self.assertTrue(bool(reloaded.encrypted_private_key))
+        decrypted_pk = reloaded.get_decrypted_private_key()
+        self.assertIsNotNone(decrypted_pk)
+        self.assertNotEqual(reloaded.encrypted_private_key, decrypted_pk)
+
+        # Derived address from decrypted private key must match wallet_address
+        account = Account.from_key(decrypted_pk)
+        self.assertEqual(account.address.lower(), reloaded.wallet_address.lower())
+
+    def test_blockchain_service_get_issuer_private_key_retrieval(self):
+        """
+        Confirms BlockchainService.get_issuer_private_key() successfully looks up
+        an institution by its wallet address and decrypts its custodial key.
+        """
+        from apps.blockchain.services import BlockchainService
+
+        self.institution.set_private_key(self.raw_test_pk)
+        self.institution.save(update_fields=['encrypted_private_key'])
+
+        key = BlockchainService.get_issuer_private_key(self.institution.wallet_address)
+        self.assertEqual(key, self.raw_test_pk)
+
+    def test_blockchain_service_get_issuer_private_key_fails_if_no_key(self):
+        """
+        Confirms BlockchainService.get_issuer_private_key() raises BlockchainError
+        when the institution has no encrypted key stored or doesn't exist.
+        """
+        from apps.blockchain.services import BlockchainService
+        from apps.blockchain.exceptions import BlockchainError
+
+        # Inst has no encrypted key yet
+        with self.assertRaises(BlockchainError):
+            BlockchainService.get_issuer_private_key(self.institution.wallet_address)
+
+        # Nonexistent wallet address
+        with self.assertRaises(BlockchainError):
+            BlockchainService.get_issuer_private_key('0x0000000000000000000000000000000000000000')
